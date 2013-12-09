@@ -1,0 +1,29 @@
+{
+  "name": "hubabuba",
+  "version": "0.0.1",
+  "description": "A client library to make it easier to use pubsubhubub",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stavinski/hubabuba.git"
+  },
+  "keywords": [
+    "pubsubhubub",
+    "rss",
+    "atom",
+    "feed",
+    "client"
+  ],
+  "author": "Mike Cromwell",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "bugs": {
+    "url": "https://github.com/stavinski/hubabuba/issues"
+  },
+  "devDependencies": {
+    "mocha": "~1.15.1"
+  },
+  "dependencies": {
+    "connect": "~2.11.2"
+  }
+}
