@@ -8,7 +8,8 @@
     "url": "https://github.com/stavinski/hubabuba.git"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "watch": "mocha -w"
   },
   "keywords": [
     "pubsubhubub",
@@ -25,9 +26,11 @@
   },
   "devDependencies": {
     "mocha": "~1.15.1",
-    "chai": "~1.8.1"
+    "chai": "~1.8.1",
+    "sinon": "~1.7.3"
   },
   "dependencies": {
-    "connect": "~2.11.2"
+    "connect": "~2.11.2",
+    "extend": "~1.2.1"
   }
 }

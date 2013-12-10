@@ -1,0 +1,12 @@
+{
+  "node": true,
+  "laxcomma":true,
+  "globals": {
+    "describe":true,
+    "before":true,
+    "after":true,
+    "beforeEach":true,
+    "afterEach":true,
+    "it":true
+  }
+}

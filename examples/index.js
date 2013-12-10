@@ -3,20 +3,19 @@
 
 var connect = require("connect")
   , http = require("http")
-  , Hubabuba = require("../")
-  , feedHandler = new Hubabuba();
+  , hubabuba = new require("../")();
 
-feedHandler.on("error", function (err) {
+hubabuba.on("error", function (err) {
   console.error(err);  
 });
 
-feedHandler.on("content", function (item) {
+hubabuba.on("notification", function (item) {
   console.log(item);
 });
 
 var app = connect()
   .use(connect.logger("dev"))
-  .use(feedHandler.handler());
+  .use(hubabuba.handler());
 
 http.createServer(app)
     .listen(3000, function () {
