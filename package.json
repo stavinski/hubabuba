@@ -1,7 +1,7 @@
 {
   "name": "hubabuba",
-  "version": "0.0.1",
-  "description": "A client library to make it easier to use pubsubhubub",
+  "version": "0.0.3",
+  "description": "A client library to make it easier to use pubsubhubub protocol 0.4",
   "main": "index.js",
   "repository": {
     "type": "git",
