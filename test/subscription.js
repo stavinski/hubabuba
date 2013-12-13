@@ -7,7 +7,7 @@ var expect = require("chai").expect
   , mockery = require("mockery")
   , Hubabuba = require("../");
 
-describe("when subscribing", function () {
+describe("when subscribing/unsubscribing", function () {
   var sut, request, http, item, requestCallback;
   
   beforeEach(function () {
@@ -36,7 +36,7 @@ describe("when subscribing", function () {
     mockery.deregisterSubstitute("https", "./test/fakehttp");  
     mockery.disable();
   });
-    
+        
   it("should use defaults for missing items", function () {
     var callback;
     callback = false;
@@ -88,7 +88,7 @@ describe("when subscribing", function () {
     expect(http.request.calledWith(params)).to.be.true;
   });
 
-  it("should write the correct params", function () {
+  it("should write the correct subscribe params", function () {
     var params;
         
     params = querystring.stringify({
@@ -98,6 +98,19 @@ describe("when subscribing", function () {
       "hub.lease_seconds": item.leaseSeconds
     });
     sut.subscribe(item);
+    expect(http.client.requestParams).to.equal(params);
+  });
+  
+  it("should write the correct unsubscribe params", function () {
+    var params;
+        
+    params = querystring.stringify({
+      "hub.callback": "http://callback.com/hubabuba/?id=" + item.id,
+      "hub.mode": "unsubscribe",
+      "hub.topic": item.topic,
+      "hub.lease_seconds": item.leaseSeconds
+    });
+    sut.unsubscribe(item);
     expect(http.client.requestParams).to.equal(params);
   });
   
@@ -123,6 +136,6 @@ describe("when subscribing", function () {
     http.client.emit("response");
     expect(callback).to.be.true;
   });
-   
+    
   
 });

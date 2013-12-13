@@ -63,6 +63,18 @@ function Hubabuba (options) {
 
 util.inherits(Hubabuba, events.EventEmitter);
 
+/**
+*
+* This is the method that is hooked into connect in order to handle callbacks from the hub, the handler should use the same url that
+* is passed as the options.url 
+*
+* Before this handler is plugged into the connect pipeline make sure that the connect.query middleware is placed before
+*
+* Example:
+*
+* app.use("/pubsub", hubabuba.handler());
+*
+*/
 Hubabuba.prototype.handler = function() {
   return function (req, res, next) {
     var url, mode;
@@ -91,7 +103,57 @@ Hubabuba.prototype.handler = function() {
   }.bind(this);
 };
 
+/**
+*
+* Used to subscribe to a pubsubhubub hub, item should be defined as:
+*
+* {
+*   id: "52ab86db7d468bb12bb455a8",
+*   hub: "http://pubsubhubbubprovider.com/hub",
+*   topic: "http://www.blog.com/feed",  
+*   leaseSeconds: 604800 // 1wk
+* }
+*
+* The callback returns an error (null if everything worked) and also the item passed to it (if it is defined), this callback
+* confirms that the subscription request has reached the hub (if err is null) but does not means that we are now subscribed
+* as there are further steps that need to take place (validation / verification)
+*
+*/
 Hubabuba.prototype.subscribe = function (item, cb) {
+  subscriptionRequest.call(this, item, cb, "subscribe");
+};
+
+/**
+*
+* Used to unsubscribe from a pubsubhub hub, works in the same way as the subscribe method, also does not mean that we are
+* unsubscribed from the hub as the hub will verify that the request is legitimate
+*
+*/
+Hubabuba.prototype.unsubscribe = function (item, cb) {
+  subscriptionRequest.call(this, item, cb, "unsubscribe");
+};
+
+var handleDenied = function (req, res) {
+  var required, valid;
+  
+  if (req.query["hub.mode"] !== "denied") return;
+    
+  if (!objectHasProperties(req.query, ["id", "hub.topic", "hub.reason"])) {
+    this.emit("error", new HubabubaError("missing required query parameters"));
+    return;
+  }
+  
+  this.emit("denied", {
+    id : req.query.id,
+    topic : req.query["hub.topic"],
+    reason : req.query["hub.reason"]
+  });
+  
+  res.writeHead(200);
+  res.end();
+};
+
+var subscriptionRequest = function (item, cb, mode) {
   var hub, protocol, callback, req, params, http, leaseSeconds, reqOptions;
   
   callback = cb || function () {}; // default to a no-op
@@ -102,7 +164,7 @@ Hubabuba.prototype.subscribe = function (item, cb) {
   }
   
   if (!objectHasProperties(item, ["id", "hub", "topic"])) {
-    callback(new HubabubaError("required params not supplied on item", item.id));
+    callback(new HubabubaError("required params not supplied on item", item.id), item);
     return;
   }
   
@@ -135,7 +197,7 @@ Hubabuba.prototype.subscribe = function (item, cb) {
       
   params = querystring.stringify({
     "hub.callback": this.opts.url + "/?id=" + item.id,
-    "hub.mode": "subscribe",
+    "hub.mode": mode,
     "hub.topic": item.topic,
     "hub.lease_seconds": item.leaseSeconds
   });
@@ -144,30 +206,11 @@ Hubabuba.prototype.subscribe = function (item, cb) {
   req.end();
 };
 
-Hubabuba.prototype.unsubscribe = function (id) {
-  
-};
-
-var handleDenied = function (req, res) {
-  var required, valid;
-  
-  if (req.query["hub.mode"] !== "denied") return;
-    
-  if (!objectHasProperties(req.query, ["id", "hub.topic", "hub.reason"])) {
-    this.emit("error", new HubabubaError("missing required query parameters"));
-    return;
-  }
-  
-  this.emit("denied", {
-    id : req.query.id,
-    topic : req.query["hub.topic"],
-    reason : req.query["hub.reason"]
-  });
-  
-  res.writeHead(200);
-  res.end();
-};
-
+/**
+*
+* Helper function that can check that all properties exist on an object
+*
+*/
 var objectHasProperties = function (obj, props) {
   return props.every(function (prop) {
     return obj.hasOwnProperty(prop);
