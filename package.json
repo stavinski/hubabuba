@@ -1,7 +1,7 @@
 {
   "name": "hubabuba",
-  "version": "0.0.3",
-  "description": "A client library to make it easier to use pubsubhubub protocol 0.4",
+  "version": "0.0.4",
+  "description": "A client library to make it easier to use the pubsubhubub protocol 0.4",
   "main": "index.js",
   "repository": {
     "type": "git",
@@ -27,7 +27,8 @@
   "devDependencies": {
     "mocha": "~1.15.1",
     "chai": "~1.8.1",
-    "sinon": "~1.7.3"
+    "sinon": "~1.7.3",
+    "mockery": "~1.4.0"
   },
   "dependencies": {
     "connect": "~2.11.2",

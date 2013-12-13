@@ -92,7 +92,7 @@ Hubabuba.prototype.handler = function() {
 };
 
 Hubabuba.prototype.subscribe = function (item, cb) {
-  var hub, protocol, callback, req, params, request, leaseSeconds, reqOptions;
+  var hub, protocol, callback, req, params, http, leaseSeconds, reqOptions;
   
   callback = cb || function () {}; // default to a no-op
     
@@ -114,7 +114,7 @@ Hubabuba.prototype.subscribe = function (item, cb) {
     return;
   }
   
-  req = require(protocol);
+  http = require(protocol); // either http or https
   reqOptions = {
     method: "POST",
     hostname: item.hub,
@@ -122,14 +122,16 @@ Hubabuba.prototype.subscribe = function (item, cb) {
       "Content-Type" : "application/x-www-form-urlencoded"
     }
   };
-  request = req.request(reqOptions, function (err, res) {
-      if (err) {
-        callback(new HubabubaError(err.message, item.id), null);
-        return;
-      }
-      
-      callback(null, item);
-    });
+  
+  req = http.request(reqOptions);
+  
+  req.on("response", function (res) {
+    callback(null, item);
+  });
+  
+  req.on("error", function (err) {
+    callback(new HubabubaError(err.message, item.id), item);
+  });
       
   params = querystring.stringify({
     "hub.callback": this.opts.url + "/?id=" + item.id,
@@ -138,8 +140,8 @@ Hubabuba.prototype.subscribe = function (item, cb) {
     "hub.lease_seconds": item.leaseSeconds
   });
   
-  request.write(params);
-  request.end();
+  req.write(params);
+  req.end();
 };
 
 Hubabuba.prototype.unsubscribe = function (id) {
