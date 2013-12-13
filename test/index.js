@@ -3,6 +3,7 @@
 
 var expect = require("chai").expect
   , sinon = require("sinon")
+  , querystring = require("querystring")
   , Hubabuba = require("../");
 
 describe("Hubabuba definition", function () {
@@ -141,7 +142,7 @@ describe("when denied request received", function () {
 });
 
 describe("when subscribing", function () {
-  var sut, request, http, https, item, requestCallback;
+  var sut, request, http, https, item, requestCallback, stub, write;
   
   beforeEach(function () {
     sut = new Hubabuba({
@@ -151,15 +152,22 @@ describe("when subscribing", function () {
     https = require("https");
     http.request = sinon.stub(http, "request");    
     https.request = sinon.stub(https, "request");    
-    
+      
+    write = sinon.spy();
+    stub = {
+      write : write,
+      end : sinon.stub()
+    };
+        
+    http.request.returns(stub);
+    https.request.returns(stub);
+      
     item = {
       id: "123456789",
       topic: "http://foo.com/feed",
       hub: "http://superfeedr.com/",
       leaseSeconds: 10000
-    };
-    
-    
+    }; 
   });
   
   afterEach(function () {
@@ -167,16 +175,14 @@ describe("when subscribing", function () {
     https.request.restore();
   });
   
-  it.skip("should use defaults for missing items", function () {
-    var returned;
-    
+  it("should use defaults for missing items", function () {
     item.leaseSeconds = undefined;    
-    sut.subscribe(item, function (err, sent) {
-      returned = sent;
-    });
+    http.request.callsArg(1);
     
-    expect(returned).to.exist;
-    expect(returned.leaseSeconds).to.equal(sut.opts.defaults.leaseSeconds);
+    sut.subscribe(item, function (err, result) {
+      expect(result).to.exist;
+      expect(result.leaseSeconds).to.equal(sut.opts.defaults.leaseSeconds);
+    });
   });
   
   it("should callback with error when item not passed", function () {
@@ -212,20 +218,32 @@ describe("when subscribing", function () {
     expect(https.request.called).to.be.true;
   });
       
-  it.skip("should make correct request", function () {
-    sut.subscribe(item);
-    
-    expect(http.request.withArgs({
+  it("should use correct request options", function () {
+    var params;
+    params = {
       method: "POST",
       hostname: item.hub,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "hub.callback": "http://callback.com/hubabuba/",
-        "hub.mode": "subscribe",
-        "hub.topic": item.topic,
-        "hub.lease_seconds": item.leaseSeconds
+      headers : {
+        "Content-Type" : "application/x-www-form-urlencoded"  
       }
-    }).calledOnce).to.be.true;
+    }; 
+    
+    sut.subscribe(item);
+    expect(http.request.calledWith(params)).to.be.true;
+  });
+
+  it("should write the correct params", function () {
+    var params;
+        
+    params = querystring.stringify({
+      "hub.callback": "http://callback.com/hubabuba/?id=" + item.id,
+      "hub.mode": "subscribe",
+      "hub.topic": item.topic,
+      "hub.lease_seconds": item.leaseSeconds
+    });
+    sut.subscribe(item);
+    
+    expect(write.calledWith(params)).to.be.true;
   });
   
   it("should callback with error if request returned error");

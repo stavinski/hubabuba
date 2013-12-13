@@ -3,6 +3,7 @@
 var util = require("util")
   , url = require("url")
   , http = require("http")
+  , querystring = require("querystring")
   , events = require("events")
   , extend = require("extend")
   , HubabubaError = require("./lib/error");
@@ -91,7 +92,7 @@ Hubabuba.prototype.handler = function() {
 };
 
 Hubabuba.prototype.subscribe = function (item, cb) {
-  var hub, protocol, callback, req;
+  var hub, protocol, callback, req, params, request, leaseSeconds, reqOptions;
   
   callback = cb || function () {}; // default to a no-op
     
@@ -105,8 +106,7 @@ Hubabuba.prototype.subscribe = function (item, cb) {
     return;
   }
   
-  extend(item, this.opts.defaults);
-  
+  item.leaseSeconds = item.leaseSeconds || this.opts.defaults.leaseSeconds;
   hub = url.parse(item.hub);
   protocol = hub.protocol.substr(0, hub.protocol.length - 1);
   if ((protocol !== "http") && (protocol !== "https")) {
@@ -115,24 +115,31 @@ Hubabuba.prototype.subscribe = function (item, cb) {
   }
   
   req = require(protocol);
-  req.request({
+  reqOptions = {
     method: "POST",
     hostname: item.hub,
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "hub.callback": this.opts.url,
-      "hub.mode": "subscribe",
-      "hub.topic": item.topic,
-      "hub.lease_seconds": item.leaseSeconds
+    headers : {
+      "Content-Type" : "application/x-www-form-urlencoded"
     }
-  }, function (err, res) {
-    if (err) {
-      callback(new HubabubaError(err.message, item.id), null);
-      return;
-    }
-    
-    callback(null, item);
+  };
+  request = req.request(reqOptions, function (err, res) {
+      if (err) {
+        callback(new HubabubaError(err.message, item.id), null);
+        return;
+      }
+      
+      callback(null, item);
+    });
+      
+  params = querystring.stringify({
+    "hub.callback": this.opts.url + "/?id=" + item.id,
+    "hub.mode": "subscribe",
+    "hub.topic": item.topic,
+    "hub.lease_seconds": item.leaseSeconds
   });
+  
+  request.write(params);
+  request.end();
 };
 
 Hubabuba.prototype.unsubscribe = function (id) {
