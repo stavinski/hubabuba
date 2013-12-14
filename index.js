@@ -6,7 +6,8 @@ var util = require("util")
   , querystring = require("querystring")
   , events = require("events")
   , extend = require("extend")
-  , HubabubaError = require("./lib/error");
+  , HubabubaError = require("./lib/error")
+  , HubabubaItem = require("./lib/item");
 
 /*
 
@@ -19,7 +20,7 @@ function verification - callback function with the subscription item
   defaults:
     number leaseSeconds - number of seconds that the subscription should be active for, please note that the hub does
                           not need to honor this value so always use the returned leaseSeconds from subscribed
-                          event as a guide to when expiry is to be expected (86400)
+                          event as a guide to when expiry is to be expected (86400 1day)
   
 
 example:
@@ -49,12 +50,12 @@ denied - when a hub denies a subscription (can happen at anytime)
 function Hubabuba (options) {
   this.opts = {
     url : "http://localhost:3000/hubabuba",
-    verification : function () { return true; },
+    verification : function () { console.log("default");return true; },
     defaults : {
       leaseSeconds : 86400 // 1day
     }
   };
-  
+    
   extend(true, this.opts, options);
   events.EventEmitter.call(this); 
   
@@ -94,6 +95,7 @@ Hubabuba.prototype.handler = function() {
         }
         
         handleDenied.call(this, req, res);
+        handleVerification.call(this, req, res);
       }
       
       return;
@@ -108,10 +110,10 @@ Hubabuba.prototype.handler = function() {
 * Used to subscribe to a pubsubhubub hub, item should be defined as:
 *
 * {
-*   id: "52ab86db7d468bb12bb455a8",
-*   hub: "http://pubsubhubbubprovider.com/hub",
-*   topic: "http://www.blog.com/feed",  
-*   leaseSeconds: 604800 // 1wk (optional)
+*   id: "52ab86db7d468bb12bb455a8", (allows the caller to specify a custom id such as a db id)
+*   hub: "http://pubsubhubbubprovider.com/hub", (the hub provider that is proving the pubsubhubub capability)
+*   topic: "http://www.blog.com/feed", (the topic the caller wants to subscribe to)
+*   leaseSeconds: 604800 // 1wk (optional) (how long the subscription should remain active for, can be changed by hub)
 * }
 *
 * The callback returns an error (null if everything worked) and also the item passed to it (if it is defined), this callback
@@ -220,6 +222,40 @@ var subscriptionRequest = function (item, cb, mode) {
     
   req.write(params);
   req.end();
+};
+
+var handleVerification = function (req, res) {
+  var mode, modeRegexp, query, verification, item;
+  query = req.query;
+  mode = query["hub.mode"];
+    
+  if (!/^(un)?subscribe$/i.test(mode)) return;
+  
+  if (!objectHasProperties(query, ["id", "hub.topic", "hub.challenge"])) {
+    this.emit("error", new HubabubaError("missing required query parameters"));
+    return;
+  }
+  
+  // must be supplied for a subscribe
+  if ((mode === "subscribe") && (!query["hub.lease_seconds"])) {
+    this.emit("error", new HubabubaError("missing required query parameters"));
+    return;
+  }
+  
+  item = new HubabubaItem(req.query);
+  verification = this.opts.verification(item);
+  
+  if (verification) {
+    res.writeHead(200);
+    res.write(query["hub.challenge"]);
+    
+    var evt = (mode === "subscribe") ? "subscribed" : "unsubscribed";
+    this.emit(evt, item);
+  } else {
+    res.writeHead(500);
+  }
+  
+  res.end();
 };
 
 /**

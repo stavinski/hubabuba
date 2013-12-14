@@ -18,11 +18,21 @@ FakeHttpClient.prototype.write = function (params) {
 FakeHttpClient.prototype.end = function () {};
 
 function FakeHttpResponse() {
-  this.statusCode = 202;
+  this.statusCode = 999;
+  this.body = "";
   
   events.EventEmitter.call(this); 
 }
+
 util.inherits(FakeHttpResponse, events.EventEmitter);
+
+FakeHttpResponse.prototype.writeHead = function (statusCode) {
+  this.statusCode = statusCode;
+};
+FakeHttpResponse.prototype.end = function () {};
+FakeHttpResponse.prototype.write = function (content) {
+  this.body = content;
+};
 
 var fakehttp = {
   init : function () {

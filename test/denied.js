@@ -5,7 +5,7 @@ var expect = require("chai").expect
   , sinon = require("sinon")
   , Hubabuba = require("../");
 
-describe("when denied request received", function () {
+describe("when handling denied", function () {
   var sut, req, res, nextSpy, handler;
   
   beforeEach(function () {
@@ -38,7 +38,7 @@ describe("when denied request received", function () {
     req.query["hub.reason"] = "just bcoz";
     
     var deniedSpy = sinon.spy();
-    
+        
     sut.on("denied", deniedSpy);
     handler(req, res, nextSpy);
     

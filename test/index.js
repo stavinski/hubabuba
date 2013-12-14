@@ -48,19 +48,7 @@ describe("handling any request", function () {
     handler(req, res, nextSpy);
     expect(nextSpy.called).to.be.true;
   });
-  
-  it("should match on correct url", function () {
-    req = {
-      url : "/hubabuba",
-      query : { "hub.mode" : "subscribe" },
-      method : "GET"
-    };
     
-    handler(req, res, nextSpy);
-    
-    expect(nextSpy.called).to.be.false;
-  });
-  
   it("should raise error if request query undefined", function () {
     req = {
       url : "/hubabuba",
