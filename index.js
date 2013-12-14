@@ -111,7 +111,7 @@ Hubabuba.prototype.handler = function() {
 *   id: "52ab86db7d468bb12bb455a8",
 *   hub: "http://pubsubhubbubprovider.com/hub",
 *   topic: "http://www.blog.com/feed",  
-*   leaseSeconds: 604800 // 1wk
+*   leaseSeconds: 604800 // 1wk (optional)
 * }
 *
 * The callback returns an error (null if everything worked) and also the item passed to it (if it is defined), this callback
@@ -188,6 +188,22 @@ var subscriptionRequest = function (item, cb, mode) {
   req = http.request(reqOptions);
   
   req.on("response", function (res) {
+    var code, reason;
+    reason = "";
+    code = Math.floor(res.statusCode / 100);
+    if (code != 2) {
+      // according to working draft error details will be provided in the body as plaintext
+      res.on("data", function (data) { 
+        reason += data;  
+      });
+      
+      res.on("end", function () {
+        callback(new HubabubaError(reason, item.id), item);
+      });
+      
+      return;
+    }
+    
     callback(null, item);
   });
   
@@ -201,7 +217,7 @@ var subscriptionRequest = function (item, cb, mode) {
     "hub.topic": item.topic,
     "hub.lease_seconds": item.leaseSeconds
   });
-  
+    
   req.write(params);
   req.end();
 };

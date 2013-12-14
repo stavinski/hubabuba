@@ -48,7 +48,7 @@ describe("when subscribing/unsubscribing", function () {
       expect(result.leaseSeconds).to.equal(sut.opts.defaults.leaseSeconds);
     });
         
-    http.client.emit("response");
+    http.client.emit("response", { statusCode : 200 });
     expect(callback).to.be.true;
   });
   
@@ -125,6 +125,24 @@ describe("when subscribing/unsubscribing", function () {
     expect(callback).to.be.true;
   });
   
+  it("should callback with error if response is not a 200", function () {
+    var callback, response;
+    callback = false;
+    http.response.statusCode = 404;
+    
+    sut.subscribe(item, function (err, result) {
+      callback = true;
+      expect(err).to.exist;
+      expect(err.message).to.equal("test err");
+    });
+    
+    http.client.emit("response", http.response);
+    http.response.emit("data", "test err");
+    http.response.emit("end");
+    
+    expect(callback).to.be.true;
+  });
+  
   it("should populate item correctly", function () {
     var callback;
     callback = false;
@@ -133,7 +151,7 @@ describe("when subscribing/unsubscribing", function () {
       expect(item).to.equal(result);
     });
     
-    http.client.emit("response");
+    http.client.emit("response", { statusCode : 200 });
     expect(callback).to.be.true;
   });
     

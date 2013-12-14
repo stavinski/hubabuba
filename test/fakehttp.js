@@ -17,12 +17,23 @@ FakeHttpClient.prototype.write = function (params) {
 
 FakeHttpClient.prototype.end = function () {};
 
+function FakeHttpResponse() {
+  this.statusCode = 202;
+  
+  events.EventEmitter.call(this); 
+}
+util.inherits(FakeHttpResponse, events.EventEmitter);
+
 var fakehttp = {
   init : function () {
     this.client = new FakeHttpClient();
+    this.response = new FakeHttpResponse();
   },
   request: function (opts) {
     return this.client;
+  },
+  response: function () {
+    return this.response;
   }
 };
 
