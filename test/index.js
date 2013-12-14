@@ -49,7 +49,7 @@ describe("handling any request", function () {
     expect(nextSpy.called).to.be.true;
   });
     
-  it("should raise error if request query undefined", function () {
+  it("should raise error if GET request query undefined", function () {
     req = {
       url : "/hubabuba",
       method : "GET"
@@ -59,7 +59,7 @@ describe("handling any request", function () {
     expect(errorSpy.called).to.be.true;
   });
   
-  it("should raise error when mode not supplied", function () {
+  it("should raise error when GET request mode not supplied", function () {
     req = {
       url : "/hubabuba",
       query : {},
