@@ -9,6 +9,8 @@ var util = require("util")
   , HubabubaError = require("./lib/error")
   , HubabubaItem = require("./lib/item");
 
+util.inherits(Hubabuba, events.EventEmitter);
+
 /*
 
 options:
@@ -62,8 +64,6 @@ function Hubabuba (options) {
   this.callbackUrl = url.parse(this.opts.url);
 }
 
-util.inherits(Hubabuba, events.EventEmitter);
-
 /**
 *
 * This is the method that is hooked into connect in order to handle callbacks from the hub, the handler should use the same url that
@@ -86,7 +86,7 @@ Hubabuba.prototype.handler = function() {
         this.emit("error", new HubabubaError("req.query is not defined"));
         return;
       }
-      
+            
       if (req.method === "GET") {
         mode = req.query["hub.mode"];
         if (!mode) {
@@ -96,6 +96,13 @@ Hubabuba.prototype.handler = function() {
         
         handleDenied.call(this, req, res);
         handleVerification.call(this, req, res);
+      } else if (req.method === "POST") {
+        
+        handleNotification.call(this, req, res);
+      } else {
+        
+        this.emit("error", new HubabubaError("method supplied is not GET or POST"));
+        return;
       }
       
       return;
@@ -173,7 +180,7 @@ var subscriptionRequest = function (item, cb, mode) {
   item.leaseSeconds = item.leaseSeconds || this.opts.defaults.leaseSeconds;
   hub = url.parse(item.hub);
   protocol = hub.protocol.substr(0, hub.protocol.length - 1);
-  if ((protocol !== "http") && (protocol !== "https")) {
+  if (!/^http(s)?$/.test(protocol)) {
     callback(new HubabubaError("protocol of hub is not supported", item.id));
     return;
   }
@@ -233,12 +240,14 @@ var handleVerification = function (req, res) {
   
   if (!objectHasProperties(query, ["id", "hub.topic", "hub.challenge"])) {
     this.emit("error", new HubabubaError("missing required query parameters"));
+    res.end();
     return;
   }
   
   // must be supplied for a subscribe
   if ((mode === "subscribe") && (!query["hub.lease_seconds"])) {
     this.emit("error", new HubabubaError("missing required query parameters"));
+    res.end();
     return;
   }
   
@@ -258,6 +267,29 @@ var handleVerification = function (req, res) {
   res.end();
 };
 
+var handleNotification = function (req, res) {
+  var id, source;
+  
+  id = req.query.id;
+  if (!id) {
+    this.emit("error", new HubabubaError("missing id parameter"));
+    res.writeHead(500);
+    res.end();
+    return;
+  }
+  
+  source = parseLinkHeaders(req.headers);
+  this.emit("notification", {
+    id: id,
+    topic: source.topic,
+    hub: source.hub,
+    request: req
+  });
+  
+  res.writeHead(200);
+  res.end();
+};
+
 /**
 *
 * Helper function that can check that all properties exist on an object
@@ -267,6 +299,53 @@ var objectHasProperties = function (obj, props) {
   return props.every(function (prop) {
     return obj.hasOwnProperty(prop);
   });
+};
+
+/**
+*
+* Helper function to parse the link headers from the http request
+*
+* Example:
+*
+* <http://pubsubhubbub.superfeedr.com>; rel=\"hub\",<http://blog.superfeedr.com/my-resource>; rel=\"self\"
+*
+*/
+var parseLinkHeaders = function (headers) {
+  var linkHeader, source, links;
+  
+  var mapLinks = function (link) {
+    var regex, match;
+    regex = new RegExp('^<(.*)>;\\srel="(.*)"');
+    match = link.match(regex);
+    if (match) {
+      return {
+        rel: match[2],
+        url: match[1]
+      };
+    }
+    
+    return null;
+  };
+    
+  var convertLinks = function (links) {
+    var map = {};
+    links.forEach(function (link) {
+      if (link)      
+        map[link.rel] = link.url;
+    });
+    return map;
+  };
+  
+  linkHeader = headers.link;
+  source = {};
+  
+  if (linkHeader) {
+    links = convertLinks(linkHeader.split(",").map(mapLinks));
+    source.hub = links.hub;
+    source.topic = links.self;
+  }
+    
+  return source;
 };
 
 module.exports = Hubabuba;

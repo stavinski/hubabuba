@@ -28,6 +28,7 @@ describe("handling any request", function () {
   var sut, handler, req, res, nextSpy, errorSpy;
   
   beforeEach(function () {
+    req = null;
     sut = new Hubabuba();
     handler = sut.handler()
                  .bind(sut);
@@ -48,11 +49,23 @@ describe("handling any request", function () {
     handler(req, res, nextSpy);
     expect(nextSpy.called).to.be.true;
   });
+  
+  it("should raise error on incorrect method", function () {
+    req = {
+      url : "/hubabuba",
+      method : "DELETE",
+      query : {}
+    };
+    sut.on("error", errorSpy);
+    handler(req, res, nextSpy);
+    expect(errorSpy.called).to.be.true;
+  });
     
   it("should raise error if GET request query undefined", function () {
     req = {
       url : "/hubabuba",
-      method : "GET"
+      method : "GET",
+      query : {}
     };
     sut.on("error", errorSpy);
     handler(req, res, nextSpy);

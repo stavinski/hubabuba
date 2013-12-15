@@ -4,12 +4,13 @@ var util = require("util")
   , events = require("events")
   , sinon = require("sinon");
 
+util.inherits(FakeHttpClient, events.EventEmitter);
+util.inherits(FakeHttpResponse, events.EventEmitter);
+
 function FakeHttpClient() {
   this.requestParams = {};
   events.EventEmitter.call(this); 
 }
-
-util.inherits(FakeHttpClient, events.EventEmitter);
 
 FakeHttpClient.prototype.write = function (params) {
   this.requestParams = params;
@@ -23,8 +24,6 @@ function FakeHttpResponse() {
   
   events.EventEmitter.call(this); 
 }
-
-util.inherits(FakeHttpResponse, events.EventEmitter);
 
 FakeHttpResponse.prototype.writeHead = function (statusCode) {
   this.statusCode = statusCode;
