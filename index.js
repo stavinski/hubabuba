@@ -84,6 +84,8 @@ Hubabuba.prototype.handler = function() {
     if (this.callbackUrl.pathname === url) {
       if (!req.query) {
         this.emit("error", new HubabubaError("req.query is not defined"));
+        res.writeHead(400); // bad request
+        res.end();
         return;
       }
             
@@ -91,17 +93,19 @@ Hubabuba.prototype.handler = function() {
         mode = req.query["hub.mode"];
         if (!mode) {
           this.emit("error", new HubabubaError("mode was not supplied"));
+          res.writeHead(400); // bad request
+          res.end();
           return;
         }
         
         handleDenied.call(this, req, res);
         handleVerification.call(this, req, res);
       } else if (req.method === "POST") {
-        
         handleNotification.call(this, req, res);
       } else {
-        
         this.emit("error", new HubabubaError("method supplied is not GET or POST"));
+        res.writeHead(405); //method not allowed
+        res.end();
         return;
       }
       

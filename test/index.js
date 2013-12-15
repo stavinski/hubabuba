@@ -60,6 +60,17 @@ describe("handling any request", function () {
     handler(req, res, nextSpy);
     expect(errorSpy.called).to.be.true;
   });
+  
+  it("should response with 405 on incorrect method", function () {
+    req = {
+      url : "/hubabuba",
+      method : "DELETE",
+      query : {}
+    };
+    sut.on("error", errorSpy);
+    handler(req, res, nextSpy);
+    expect(res.writeHead.withArgs(405).called).to.be.true;
+  });
     
   it("should raise error if GET request query undefined", function () {
     req = {
@@ -72,6 +83,17 @@ describe("handling any request", function () {
     expect(errorSpy.called).to.be.true;
   });
   
+  it("should respond with 400 if GET request query undefined", function () {
+    req = {
+      url : "/hubabuba",
+      method : "GET",
+      query : {}
+    };
+    sut.on("error", errorSpy);
+    handler(req, res, nextSpy);
+    expect(res.writeHead.withArgs(400).called).to.be.true;
+  });
+  
   it("should raise error when GET request mode not supplied", function () {
     req = {
       url : "/hubabuba",
@@ -81,6 +103,17 @@ describe("handling any request", function () {
     sut.on("error", errorSpy);
     handler(req, res, nextSpy);
     expect(errorSpy.called).to.be.true;
+  });
+  
+  it("should respond with 400 when GET request mode not supplied", function () {
+    req = {
+      url : "/hubabuba",
+      query : {},
+      method : "GET"
+    };
+    sut.on("error", errorSpy);
+    handler(req, res, nextSpy);
+    expect(res.writeHead.withArgs(400).called).to.be.true;
   });
   
 });
