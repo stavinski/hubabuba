@@ -9,11 +9,12 @@ var expect = require("chai").expect
   , Hubabuba = require("../");
 
 describe("when handling verification", function () {
-  var sut, req, handler, verification, item;
+  var sut, url, req, handler, verification, item;
   
   beforeEach(function () {
     verification = sinon.stub();
-    sut = new Hubabuba({
+    url = "http://callback.com/hubabuba";
+    sut = new Hubabuba(url, {
       verification : verification
     });
     

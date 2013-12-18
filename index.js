@@ -13,9 +13,13 @@ util.inherits(Hubabuba, events.EventEmitter);
 
 /*
 
+string url:
+
+url that callback handler is associated with required
+
 options:
 
-string url - url that callback handler is associated with (http://localhost:3000/hubabuba)
+bool debug - turns on debug mdoe to allow diagnosing issues (false)
 function verification - callback function with the subscription item 
                         allows customization about whether a (un)subscription
                         is allowed by returning a bool (always return true)
@@ -29,6 +33,7 @@ example:
 
 {
   url : "http://www.myhost.com/hubabuba",
+  debug : true,
   verification : function (item) {
     var sub = subs.find(item.id);
     if (item.mode === modes.SUBSCRIBE) {
@@ -49,10 +54,16 @@ notification - when new content is sent from the hub
 denied - when a hub denies a subscription (can happen at anytime)
 
 */
-function Hubabuba (options) {
+function Hubabuba (callbackUrl, options) {
+  if (!callbackUrl)
+    throw new HubabubaError("callbackUrl must be supplied");
+  
+  this.url = callbackUrl;
+  this.callbackUrl = url.parse(this.url);
+  
   this.opts = {
-    url : "http://localhost:3000/hubabuba",
-    verification : function () { console.log("default");return true; },
+    debug : false,
+    verification : function () { return true; },
     defaults : {
       leaseSeconds : 86400 // 1day
     }
@@ -61,7 +72,11 @@ function Hubabuba (options) {
   extend(true, this.opts, options);
   events.EventEmitter.call(this); 
   
-  this.callbackUrl = url.parse(this.opts.url);
+  this.debugLog = function (msg) {
+    if (this.opts.debug)
+      console.log(msg);
+    
+  }.bind(this);
 }
 
 /**
@@ -78,10 +93,10 @@ function Hubabuba (options) {
 */
 Hubabuba.prototype.handler = function() {
   return function (req, res, next) {
-    var url, mode;
-    url = req.originalUrl || req.url;
+    var requestUrl, mode;
+    requestUrl = req.originalUrl || req.url;
     
-    if (this.callbackUrl.pathname === url) {
+    if (this.callbackUrl.pathname === url.parse(requestUrl).pathname) {
       if (!req.query) {
         this.emit("error", new HubabubaError("req.query is not defined"));
         res.writeHead(400); // bad request
@@ -184,20 +199,32 @@ var subscriptionRequest = function (item, cb, mode) {
   item.leaseSeconds = item.leaseSeconds || this.opts.defaults.leaseSeconds;
   hub = url.parse(item.hub);
   protocol = hub.protocol.substr(0, hub.protocol.length - 1);
-  if (!/^http(s)?$/.test(protocol)) {
+  if (!/^https?$/.test(protocol)) {
     callback(new HubabubaError("protocol of hub is not supported", item.id));
     return;
   }
   
   http = require(protocol); // either http or https
+  
+  params = querystring.stringify({
+    "hub.mode": mode,
+    "hub.callback": this.url + "?id=" + item.id,
+    "hub.topic": item.topic,
+    "hub.lease_seconds": item.leaseSeconds
+  });
+    
   reqOptions = {
     method: "POST",
-    hostname: item.hub,
+    hostname: hub.hostname,
+    path: hub.path,
+    port: (protocol === "http") ? 80 : 443,
     headers : {
-      "Content-Type" : "application/x-www-form-urlencoded"
+      "Content-Type" : "application/x-www-form-urlencoded",
+      "Content-Length": Buffer.byteLength(params)
     }
   };
   
+  this.debugLog("making web request with options: " + JSON.stringify(reqOptions));  
   req = http.request(reqOptions);
   
   req.on("response", function (res) {
@@ -223,14 +250,8 @@ var subscriptionRequest = function (item, cb, mode) {
   req.on("error", function (err) {
     callback(new HubabubaError(err.message, item.id), item);
   });
-      
-  params = querystring.stringify({
-    "hub.callback": this.opts.url + "/?id=" + item.id,
-    "hub.mode": mode,
-    "hub.topic": item.topic,
-    "hub.lease_seconds": item.leaseSeconds
-  });
     
+  this.debugLog("sending body params: " + JSON.stringify(params));  
   req.write(params);
   req.end();
 };
@@ -240,7 +261,7 @@ var handleVerification = function (req, res) {
   query = req.query;
   mode = query["hub.mode"];
     
-  if (!/^(un)?subscribe$/i.test(mode)) return;
+  if (!/^(?:un)?subscribe$/i.test(mode)) return;
   
   if (!objectHasProperties(query, ["id", "hub.topic", "hub.challenge"])) {
     this.emit("error", new HubabubaError("missing required query parameters"));

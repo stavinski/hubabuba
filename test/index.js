@@ -6,30 +6,37 @@ var expect = require("chai").expect
   , Hubabuba = require("../");
 
 describe("Hubabuba definition", function () {
-  var sut;
+  var sut, url;
+  url = "http://callback.com/fubar";
   
   it("should have public methods defined", function () {
-    sut = new Hubabuba(); 
+    sut = new Hubabuba(url); 
     expect(sut.handler).to.exist;
     expect(sut.subscribe).to.exist;
     expect(sut.unsubscribe).to.exist;
   });
   
   it("should have correct options", function () {
-    sut = new Hubabuba({
-      url : "http://callback.com/fubar"
+    sut = new Hubabuba(url, {
+      debug: true,
+      defaults: {
+        leaseSeconds: 10
+      }
     });
     
-    expect(sut.opts.url).to.equal("http://callback.com/fubar");
+    expect(sut.url).to.equal(url);
+    expect(sut.opts.debug).to.be.true;
+    expect(sut.opts.defaults.leaseSeconds).to.equal(10);
   });
 });
 
 describe("handling any request", function () {
-  var sut, handler, req, res, nextSpy, errorSpy;
+  var sut, url, handler, req, res, nextSpy, errorSpy;
   
   beforeEach(function () {
     req = null;
-    sut = new Hubabuba();
+    url = "http://callback.com/hubabuba";
+    sut = new Hubabuba(url);
     handler = sut.handler()
                  .bind(sut);
     res = {

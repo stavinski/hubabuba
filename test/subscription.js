@@ -1,14 +1,15 @@
 /* jshint expr: true */
 "use strict";
 
-var expect = require("chai").expect
+var url = require("url")
+  , expect = require("chai").expect
   , sinon = require("sinon")
   , querystring = require("querystring")
   , mockery = require("mockery")
   , Hubabuba = require("../");
 
 describe("when subscribing/unsubscribing", function () {
-  var sut, request, http, item, requestCallback;
+  var sut, callbackUrl, request, http, item, requestCallback;
   
   beforeEach(function () {
     mockery.enable();
@@ -18,10 +19,9 @@ describe("when subscribing/unsubscribing", function () {
     
     http = require("./fakehttp");
     http.init();
-        
-    sut = new Hubabuba({
-      url: "http://callback.com/hubabuba"
-    });
+    
+    callbackUrl = "http://callback.com/hubabuba";
+    sut = new Hubabuba(callbackUrl);
     
     item = {
       id: "123456789",
@@ -74,12 +74,16 @@ describe("when subscribing/unsubscribing", function () {
   });
 
   it("should use correct request options", function () {
-    var params;
+    var params, hub;
+    hub = url.parse(item.hub);
     params = {
       method: "POST",
-      hostname: item.hub,
+      hostname: hub.hostname,
+      path : hub.path,
+      port: 80,
       headers : {
-        "Content-Type" : "application/x-www-form-urlencoded"  
+        "Content-Type" : "application/x-www-form-urlencoded",
+        "Content-Length": 147
       }
     }; 
         
@@ -92,8 +96,8 @@ describe("when subscribing/unsubscribing", function () {
     var params;
         
     params = querystring.stringify({
-      "hub.callback": "http://callback.com/hubabuba/?id=" + item.id,
       "hub.mode": "subscribe",
+      "hub.callback": "http://callback.com/hubabuba?id=" + item.id,
       "hub.topic": item.topic,
       "hub.lease_seconds": item.leaseSeconds
     });
@@ -105,8 +109,8 @@ describe("when subscribing/unsubscribing", function () {
     var params;
         
     params = querystring.stringify({
-      "hub.callback": "http://callback.com/hubabuba/?id=" + item.id,
       "hub.mode": "unsubscribe",
+      "hub.callback": "http://callback.com/hubabuba?id=" + item.id,
       "hub.topic": item.topic,
       "hub.lease_seconds": item.leaseSeconds
     });

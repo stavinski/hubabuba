@@ -6,11 +6,12 @@ var expect = require("chai").expect
   , Hubabuba = require("../");
 
 describe("when handling a notification", function () {
-  var sut, req, res, nextSpy, handler;
+  var sut, url, req, res, nextSpy, handler;
   
   beforeEach(function () {
     nextSpy = sinon.spy();
-    sut = new Hubabuba();
+    url = "http://callback.com/hubabuba";
+    sut = new Hubabuba(url);
     handler = sut.handler()
                  .bind(sut);
     res = {
