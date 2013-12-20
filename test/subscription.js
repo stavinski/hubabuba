@@ -21,7 +21,7 @@ describe("when subscribing/unsubscribing", function () {
     http.init();
     
     callbackUrl = "http://callback.com/hubabuba";
-    sut = new Hubabuba(callbackUrl);
+    sut = new Hubabuba(callbackUrl, { secret: "bubblegum" });
     
     item = {
       id: "123456789",
@@ -40,12 +40,12 @@ describe("when subscribing/unsubscribing", function () {
   it("should use defaults for missing items", function () {
     var callback;
     callback = false;
-    item.leaseSeconds = undefined;    
+    item.leaseSeconds = undefined;
         
     sut.subscribe(item, function (err, result) {
       callback = true;
       expect(result).to.exist;
-      expect(result.leaseSeconds).to.equal(sut.opts.defaults.leaseSeconds);
+      expect(result.leaseSeconds).to.equal(sut.opts.leaseSeconds);
     });
         
     http.client.emit("response", { statusCode : 200 });
@@ -83,7 +83,7 @@ describe("when subscribing/unsubscribing", function () {
       port: 80,
       headers : {
         "Content-Type" : "application/x-www-form-urlencoded",
-        "Content-Length": 147
+        "Content-Length": 168
       }
     }; 
         
@@ -99,7 +99,8 @@ describe("when subscribing/unsubscribing", function () {
       "hub.mode": "subscribe",
       "hub.callback": "http://callback.com/hubabuba?id=" + item.id,
       "hub.topic": item.topic,
-      "hub.lease_seconds": item.leaseSeconds
+      "hub.lease_seconds": item.leaseSeconds,
+      "hub.secret" : "bubblegum"
     });
     sut.subscribe(item);
     expect(http.client.requestParams).to.equal(params);
@@ -112,7 +113,8 @@ describe("when subscribing/unsubscribing", function () {
       "hub.mode": "unsubscribe",
       "hub.callback": "http://callback.com/hubabuba?id=" + item.id,
       "hub.topic": item.topic,
-      "hub.lease_seconds": item.leaseSeconds
+      "hub.lease_seconds": item.leaseSeconds,
+      "hub.secret" : "bubblegum"
     });
     sut.unsubscribe(item);
     expect(http.client.requestParams).to.equal(params);

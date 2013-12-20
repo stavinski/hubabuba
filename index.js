@@ -3,6 +3,7 @@
 var util = require("util")
   , url = require("url")
   , http = require("http")
+  , crypto = require("crypto")
   , querystring = require("querystring")
   , events = require("events")
   , extend = require("extend")
@@ -11,48 +12,46 @@ var util = require("util")
 
 util.inherits(Hubabuba, events.EventEmitter);
 
-/*
-
-string url:
-
-url that callback handler is associated with required
-
-options:
-
-bool debug - turns on debug mdoe to allow diagnosing issues (false)
-function verification - callback function with the subscription item 
-                        allows customization about whether a (un)subscription
-                        is allowed by returning a bool (always return true)
-  defaults:
-    number leaseSeconds - number of seconds that the subscription should be active for, please note that the hub does
-                          not need to honor this value so always use the returned leaseSeconds from subscribed
-                          event as a guide to when expiry is to be expected (86400 1day)
-  
-
-example:
-
-{
-  url : "http://www.myhost.com/hubabuba",
-  debug : true,
-  verification : function (item) {
-    var sub = subs.find(item.id);
-    if (item.mode === modes.SUBSCRIBE) {
-      return (sub) && (sub.status === modes.PENDING);
-    }
-  },
-  defaults : {
-    leaseSeconds : 10000
-  }
-}
-
-events emitted:
-
-error - when an error occurs at anytime while handling requests
-subscribed - when a hub has confirmed subscription
-unsubscribed - when a hub has confirmed unsubscription
-notification - when new content is sent from the hub
-denied - when a hub denies a subscription (can happen at anytime)
-
+/**
+*
+* @class Hubabuba
+* @constructor
+* @param callbackUrl {String} the url to use as the callback
+* @param options {Object} options to be applied to this instance
+* 
+* options: 
+*
+* bool debug - turns on debug mdoe to allow diagnosing issues (false)
+* function verification - callback function with the subscription item 
+*                        allows customization about whether a (un)subscription
+*                        is allowed by returning a bool (always return true)
+* secret - a string to use as part of the HMAC, as per working draft this should only be used for hubs running on HTTPS (null)
+* number leaseSeconds - number of seconds that the subscription should be active for, please note that the hub does
+*                       not need to honor this value so always use the returned leaseSeconds from subscribed
+*                       event as a guide to when expiry is to be expected (86400 1day)
+*  
+* @example options
+*   {
+*     url : "http://www.myhost.com/hubabuba",
+*     debug : true,
+*     secret: "AMt323Dkpf2j1qQ",
+*     verification : function (item) {
+*       var sub = subs.find(item.id);
+*       if (item.mode === modes.SUBSCRIBE) {
+*         return (sub) && (sub.status === modes.PENDING);
+*       }
+*     },
+*     leaseSeconds : 10000
+*   }
+*
+* events emitted:
+*
+* error - when an error occurs at anytime while handling requests
+* subscribed - when a hub has confirmed subscription
+* unsubscribed - when a hub has confirmed unsubscription
+* notification - when new content is sent from the hub
+* denied - when a hub denies a subscription (can happen at anytime)
+*
 */
 function Hubabuba (callbackUrl, options) {
   if (!callbackUrl)
@@ -63,10 +62,9 @@ function Hubabuba (callbackUrl, options) {
   
   this.opts = {
     debug : false,
+    secret: null,
     verification : function () { return true; },
-    defaults : {
-      leaseSeconds : 86400 // 1day
-    }
+    leaseSeconds : 86400 // 1day
   };
     
   extend(true, this.opts, options);
@@ -80,15 +78,16 @@ function Hubabuba (callbackUrl, options) {
 }
 
 /**
+* @method
+* @return {Function} a connect function with the signature (req, res, next)
 *
 * This is the method that is hooked into connect in order to handle callbacks from the hub, the handler should use the same url that
 * is passed as the options.url 
 *
 * Before this handler is plugged into the connect pipeline make sure that the connect.query middleware is placed before
 *
-* Example:
-*
-* app.use("/pubsub", hubabuba.handler());
+* @example
+*   app.use(hubabuba.handler());
 *
 */
 Hubabuba.prototype.handler = function() {
@@ -132,6 +131,9 @@ Hubabuba.prototype.handler = function() {
 };
 
 /**
+* @method
+* @param item {Object}
+* @param cb {Function} standard callback matching signature (err, item)
 *
 * Used to subscribe to a pubsubhubub hub, item should be defined as:
 *
@@ -152,6 +154,9 @@ Hubabuba.prototype.subscribe = function (item, cb) {
 };
 
 /**
+* @method
+* @param item {Object}
+* @param cb {Function} standard callback matching signature (err, item)
 *
 * Used to unsubscribe from a pubsubhub hub, works in the same way as the subscribe method, also does not mean that we are
 * unsubscribed from the hub as the hub will verify that the request is legitimate
@@ -182,7 +187,7 @@ var handleDenied = function (req, res) {
 };
 
 var subscriptionRequest = function (item, cb, mode) {
-  var hub, protocol, callback, req, params, http, leaseSeconds, reqOptions;
+  var hub, protocol, callback, req, params, http, leaseSeconds, reqOptions, body;
   
   callback = cb || function () {}; // default to a no-op
     
@@ -196,7 +201,7 @@ var subscriptionRequest = function (item, cb, mode) {
     return;
   }
   
-  item.leaseSeconds = item.leaseSeconds || this.opts.defaults.leaseSeconds;
+  item.leaseSeconds = item.leaseSeconds || this.opts.leaseSeconds;
   hub = url.parse(item.hub);
   protocol = hub.protocol.substr(0, hub.protocol.length - 1);
   if (!/^https?$/.test(protocol)) {
@@ -206,13 +211,19 @@ var subscriptionRequest = function (item, cb, mode) {
   
   http = require(protocol); // either http or https
   
-  params = querystring.stringify({
+  params = {
     "hub.mode": mode,
     "hub.callback": this.url + "?id=" + item.id,
     "hub.topic": item.topic,
     "hub.lease_seconds": item.leaseSeconds
-  });
-    
+  };
+  
+  // turn into a HMAC key with topic
+  if (this.opts.secret) {
+    params["hub.secret"] = this.opts.secret;
+  }
+  body = querystring.stringify(params);
+
   reqOptions = {
     method: "POST",
     hostname: hub.hostname,
@@ -220,13 +231,14 @@ var subscriptionRequest = function (item, cb, mode) {
     port: (protocol === "http") ? 80 : 443,
     headers : {
       "Content-Type" : "application/x-www-form-urlencoded",
-      "Content-Length": Buffer.byteLength(params)
+      "Content-Length": Buffer.byteLength(body)
     }
   };
   
   this.debugLog("making web request with options: " + JSON.stringify(reqOptions));  
   req = http.request(reqOptions);
   
+  // extract this into another function
   req.on("response", function (res) {
     var code, reason;
     reason = "";
@@ -251,8 +263,8 @@ var subscriptionRequest = function (item, cb, mode) {
     callback(new HubabubaError(err.message, item.id), item);
   });
     
-  this.debugLog("sending body params: " + JSON.stringify(params));  
-  req.write(params);
+  this.debugLog("sending body params: " + body);  
+  req.write(body);
   req.end();
 };
 
@@ -315,7 +327,7 @@ var handleNotification = function (req, res) {
   res.end();
 };
 
-/**
+/*
 *
 * Helper function that can check that all properties exist on an object
 *
@@ -326,11 +338,11 @@ var objectHasProperties = function (obj, props) {
   });
 };
 
-/**
+/*
 *
 * Helper function to parse the link headers from the http request
 *
-* Example:
+* Link Example:
 *
 * <http://pubsubhubbub.superfeedr.com>; rel=\"hub\",<http://blog.superfeedr.com/my-resource>; rel=\"self\"
 *
@@ -340,7 +352,7 @@ var parseLinkHeaders = function (headers) {
   
   var mapLinks = function (link) {
     var regex, match;
-    regex = new RegExp('^<(.*)>;\\srel="(.*)"');
+    regex = new RegExp('<(.*)>;\\srel="(.*)"');
     match = link.match(regex);
     if (match) {
       return {
@@ -373,4 +385,7 @@ var parseLinkHeaders = function (headers) {
   return source;
 };
 
+/**
+*@module Hubabuba
+*/
 module.exports = Hubabuba;
