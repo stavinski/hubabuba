@@ -8,26 +8,22 @@ var connect = require("connect")
     debug : true
   });
 
-push.on("error", console.error);
-
-push.on("subscribed", function (item) {
-  console.log("subscribed");
-  console.log(item);
-});
-
-push.on("unsubscribed", function (item) {
-  console.log("unsubscribed");
-  console.log(item);
-});
-
-push.on("denied", function (item) {
-  console.log("denied");
-  console.log(item);
-});
-
-push.on("notification", function (item) {
-  console.log("notification");
-  console.log(item);
+push.on("error", console.error)
+    .on("subscribed", function (item) {
+      console.log("subscribed");
+      console.log(item);
+    })
+    .on("unsubscribed", function (item) {
+      console.log("unsubscribed");
+      console.log(item);
+    })
+    .on("denied", function (item) {
+      console.log("denied");
+      console.log(item);
+    })
+    .on("notification", function (item) {
+      console.log("notification");
+      console.log(item);
 });
 
 var app = connect()

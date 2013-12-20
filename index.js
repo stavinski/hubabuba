@@ -73,8 +73,8 @@ function Hubabuba (callbackUrl, options) {
   this.debugLog = function (msg) {
     if (this.opts.debug)
       console.log(msg);
-    
   }.bind(this);
+    
 }
 
 /**
@@ -187,8 +187,7 @@ var handleDenied = function (req, res) {
 };
 
 var subscriptionRequest = function (item, cb, mode) {
-  var hub, protocol, callback, req, params, http, leaseSeconds, reqOptions, body;
-  
+  var hub, protocol, callback, req, params, http, leaseSeconds, reqOptions, body, responseHandler;
   callback = cb || function () {}; // default to a no-op
     
   if (!item) {
@@ -218,12 +217,17 @@ var subscriptionRequest = function (item, cb, mode) {
     "hub.lease_seconds": item.leaseSeconds
   };
   
-  // turn into a HMAC key with topic
   if (this.opts.secret) {
-    params["hub.secret"] = this.opts.secret;
+    if (protocol === "http")
+      console.warn("secret is being used however the request is not being sent over HTTPS");
+    
+    params["hub.secret"] = crypto.createHmac("sha1", this.opts.secret)
+                                 .update(item.topic)
+                                 .digest("hex");
   }
+    
   body = querystring.stringify(params);
-
+  
   reqOptions = {
     method: "POST",
     hostname: hub.hostname,
@@ -238,18 +242,26 @@ var subscriptionRequest = function (item, cb, mode) {
   this.debugLog("making web request with options: " + JSON.stringify(reqOptions));  
   req = http.request(reqOptions);
   
-  // extract this into another function
-  req.on("response", function (res) {
-    var code, reason;
+  responseHandler = subscriptionResponse.bind(this, item, callback);
+  req.on("response", responseHandler)
+     .on("error", function (err) {
+      callback(new HubabubaError(err.message, item.id), item);
+  });
+    
+  this.debugLog("sending body params: " + body);  
+  req.write(body);
+  req.end();
+};
+
+var subscriptionResponse = function (item, callback, res) {
+  var code, reason;
     reason = "";
     code = Math.floor(res.statusCode / 100);
     if (code != 2) {
       // according to working draft error details will be provided in the body as plaintext
       res.on("data", function (data) { 
         reason += data;  
-      });
-      
-      res.on("end", function () {
+      }).on("end", function () {
         callback(new HubabubaError(reason, item.id), item);
       });
       
@@ -257,15 +269,6 @@ var subscriptionRequest = function (item, cb, mode) {
     }
     
     callback(null, item);
-  });
-  
-  req.on("error", function (err) {
-    callback(new HubabubaError(err.message, item.id), item);
-  });
-    
-  this.debugLog("sending body params: " + body);  
-  req.write(body);
-  req.end();
 };
 
 var handleVerification = function (req, res) {

@@ -26,7 +26,7 @@ describe("when subscribing/unsubscribing", function () {
     item = {
       id: "123456789",
       topic: "http://foo.com/feed",
-      hub: "http://superfeedr.com/",
+      hub: "https://superfeedr.com/",
       leaseSeconds: 10000
     }; 
   });
@@ -80,10 +80,10 @@ describe("when subscribing/unsubscribing", function () {
       method: "POST",
       hostname: hub.hostname,
       path : hub.path,
-      port: 80,
+      port: 443,
       headers : {
         "Content-Type" : "application/x-www-form-urlencoded",
-        "Content-Length": 168
+        "Content-Length": 199
       }
     }; 
         
@@ -100,7 +100,7 @@ describe("when subscribing/unsubscribing", function () {
       "hub.callback": "http://callback.com/hubabuba?id=" + item.id,
       "hub.topic": item.topic,
       "hub.lease_seconds": item.leaseSeconds,
-      "hub.secret" : "bubblegum"
+      "hub.secret" : "be3221c0bc209b830af034f4b46d6dcfc5660c52"
     });
     sut.subscribe(item);
     expect(http.client.requestParams).to.equal(params);
@@ -114,7 +114,7 @@ describe("when subscribing/unsubscribing", function () {
       "hub.callback": "http://callback.com/hubabuba?id=" + item.id,
       "hub.topic": item.topic,
       "hub.lease_seconds": item.leaseSeconds,
-      "hub.secret" : "bubblegum"
+      "hub.secret" : "be3221c0bc209b830af034f4b46d6dcfc5660c52"
     });
     sut.unsubscribe(item);
     expect(http.client.requestParams).to.equal(params);
