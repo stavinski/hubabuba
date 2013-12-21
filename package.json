@@ -1,6 +1,6 @@
 {
   "name": "hubabuba",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "A client library to make it easier to use the pubsubhubub protocol 0.4",
   "main": "index.js",
   "repository": {
@@ -9,7 +9,8 @@
   },
   "scripts": {
     "test": "mocha",
-    "watch": "mocha -w"
+    "watch": "mocha -w",
+    "docs": "jsdoc -c docs/conf.json"
   },
   "keywords": [
     "pubsubhubub",
