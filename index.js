@@ -29,6 +29,7 @@ util.inherits(Hubabuba, events.EventEmitter);
 * number leaseSeconds - number of seconds that the subscription should be active for, please note that the hub does
 *                       not need to honor this value so always use the returned leaseSeconds from subscribed
 *                       event as a guide to when expiry is to be expected (86400 1day)
+* number maxNotificationSize - Maximum number of bytes that is allowed to be posted as a notification (4.194e6 = 4MB)
 *  
 * @example options
 *   {
@@ -41,7 +42,8 @@ util.inherits(Hubabuba, events.EventEmitter);
 *         return (sub) && (sub.status === modes.PENDING);
 *       }
 *     },
-*     leaseSeconds : 10000
+*     leaseSeconds : 10000,
+*     maxNotificationSize : 1.049e6 // 1MB
 *   }
 *
 * @fires Hubabuba#error
@@ -61,8 +63,9 @@ function Hubabuba (callbackUrl, options) {
   this.opts = {
     debug : false,
     secret: null,
-    verification : function () { return true; },
-    leaseSeconds : 86400 // 1day
+    verification: function () { return true; },
+    leaseSeconds: 86400, // 1day
+    maxNotificationSize: 4.194e6 // 4MB
   };
     
   extend(true, this.opts, options);
@@ -95,7 +98,7 @@ Hubabuba.prototype.handler = function() {
     
     if (this.callbackUrl.pathname === url.parse(requestUrl).pathname) {
       if (!req.query) {
-        raiseError.call(this, "req.query is not defined");
+        HubabubaError.raiseError.call(this, new HubabubaError("req.query is not defined"));
         res.writeHead(400); // bad request
         res.end();
         return;
@@ -104,7 +107,7 @@ Hubabuba.prototype.handler = function() {
       if (req.method === "GET") {
         mode = req.query["hub.mode"];
         if (!mode) {
-          raiseError.call(this, "mode was not supplied");
+          HubabubaError.raiseError.call(this, new HubabubaError("mode was not supplied"));
           res.writeHead(400); // bad request
           res.end();
           return;
@@ -115,7 +118,7 @@ Hubabuba.prototype.handler = function() {
       } else if (req.method === "POST") {
         handleNotification.call(this, req, res);
       } else {
-        raiseError.call(this, "method supplied is not GET or POST");
+        HubabubaError.raiseError.call(this, new HubabubaError("method supplied is not GET or POST"));
         res.writeHead(405); //method not allowed
         res.end();
         return;
@@ -164,14 +167,10 @@ Hubabuba.prototype.unsubscribe = function (item, cb) {
   subscriptionRequest.call(this, item, cb, "unsubscribe");
 };
 
-var raiseError = function (msg, id) {
-  /**
-  * when an error occurs at anytime while handling requests 
-  *
-  * @event Hubabuba#error
-  * @type {HubabubaError}
-  */
-  this.emit("error", new HubabubaError("req.query is not defined"));
+var createSecretKey = function (topic) {
+  return crypto.createHmac("sha1", this.opts.secret)
+               .update(topic)
+               .digest("hex");
 };
 
 var handleDenied = function (req, res) {
@@ -180,7 +179,7 @@ var handleDenied = function (req, res) {
   if (req.query["hub.mode"] !== "denied") return;
     
   if (!objectHasProperties(req.query, ["id", "hub.topic", "hub.reason"])) {
-    raiseError.call(this, "missing required query parameters");
+    HubabubaError.raiseError.call(this, new HubabubaError("missing required query parameters"));
     return;
   }
   
@@ -203,7 +202,7 @@ var handleDenied = function (req, res) {
 };
 
 var subscriptionRequest = function (item, cb, mode) {
-  var hub, protocol, callback, req, params, http, leaseSeconds, reqOptions, body, responseHandler;
+  var hub, protocol, callback, req, params, http, leaseSeconds, reqOptions, body, responseHandler, secret;
   callback = cb || function () {}; // default to a no-op
     
   if (!item) {
@@ -237,9 +236,9 @@ var subscriptionRequest = function (item, cb, mode) {
     if (protocol === "http")
       console.warn("secret is being used however the request is not being sent over HTTPS");
     
-    params["hub.secret"] = crypto.createHmac("sha1", this.opts.secret)
-                                 .update(item.topic)
-                                 .digest("hex");
+    secret = createSecretKey.call(this, item.topic);
+    this.debugLog("generating secret: " + secret);
+    params["hub.secret"] = secret;
   }
     
   body = querystring.stringify(params);
@@ -289,21 +288,21 @@ var subscriptionResponse = function (item, callback, res) {
 };
 
 var handleVerification = function (req, res) {
-  var mode, modeRegexp, query, verification, item;
+  var mode, modeRegexp, query, verification, item, challenge;
   query = req.query;
   mode = query["hub.mode"];
     
   if (!/^(?:un)?subscribe$/i.test(mode)) return;
   
   if (!objectHasProperties(query, ["id", "hub.topic", "hub.challenge"])) {
-    raiseError.call(this, "missing required query parameters");
+    HubabubaError.raiseError.call(this, new HubabubaError("missing required query parameters"));
     res.end();
     return;
   }
   
   // must be supplied for a subscribe
   if ((mode === "subscribe") && (!query["hub.lease_seconds"])) {
-    raiseError.call(this, "missing required query parameters");
+    HubabubaError.raiseError.call(this, new HubabubaError("missing required query parameters"));
     res.end();
     return;
   }
@@ -312,8 +311,10 @@ var handleVerification = function (req, res) {
   verification = this.opts.verification(item);
   
   if (verification) {
+    challenge = query["hub.challenge"];
+    this.debugLog("challenge from request: " + challenge);
     res.writeHead(200);
-    res.write(query["hub.challenge"]);
+    res.write(challenge);
     
     var evt = (mode === "subscribe") ? "subscribed" : "unsubscribed";
     
@@ -335,35 +336,84 @@ var handleVerification = function (req, res) {
 };
 
 var handleNotification = function (req, res) {
-  var id, source;
+  var id, size, body, source;
+  body = "";
   
   id = req.query.id;
   if (!id) {
-    raiseError.call(this, "missing id parameter");
+    HubabubaError.raiseError.call(this, new HubabubaError("missing id parameter"));
     res.writeHead(500);
+    res.end();
+    return;
+  }
+  
+  size = req.headers["Content-Length"];
+  this.debugLog("size of request in header: " + size);
+  if (size > this.opts.maxNotificationSize) {
+    HubabubaError.raiseError.call(this, new HubabubaError("notification body size is greater than configured maximum", id));
+    res.writeHead(413); // entity too large
     res.end();
     return;
   }
   
   source = parseLinkHeaders(req.headers);
   
-  /**
-    *
-    * when new content is sent from the hub
-    * 
-    * @event Hubabuba#notification
-    * @type {object}
-    *
-    */
-  this.emit("notification", {
-    id: id,
-    topic: source.topic,
-    hub: source.hub,
-    request: req
-  });
-  
-  res.writeHead(200);
-  res.end();
+  req.on("data", function notificationData(data) {
+    body += data;
+        
+    if (Buffer.byteLength(body) > this.opts.maxNotificationSize) {
+        this.debugLog("body size reached size of: " + Buffer.byteLength(body));
+        HubabubaError.raiseError.call(this, new HubabubaError("notification body size is greater than configured maximum", id));
+        res.writeHead(413); //entity too large
+        res.end();
+    }
+  }.bind(this));
+    
+  req.on("end", function notificationEnd() {
+    var header, emit, actualSignature, secretKey, expectedSignature;
+    emit = true;
+    
+    if (this.opts.secret) {
+      header = req.headers["X-Hub-Signature"];
+      this.debugLog("receieved secret header: " + header);
+            
+      if (header) {
+        // signature must be in the form sha1=signature
+        actualSignature = header.split("=")[1];
+        secretKey = createSecretKey.call(this, source.topic);
+        expectedSignature = crypto.createHmac("sha1", secretKey)
+                                  .update(body)
+                                  .digest("hex");
+        
+        this.debugLog("expecting signature: " + expectedSignature);        
+        if (actualSignature !== expectedSignature) {
+          emit = false;
+          HubabubaError.raiseError.call(this, new HubabubaError("signature supplied does not match expected signature", id));
+        }
+      } else {
+        emit = false;
+      }
+    }
+    
+    if (emit) {
+      /**
+        * when new content is sent from the hub 
+        * @event Hubabuba#notification
+        * @type {object}
+        */
+      this.emit("notification", {
+        id: id,
+        topic: source.topic,
+        hub: source.hub,
+        request: req,
+        content : body
+      });
+    }
+    
+    res.writeHead(200);
+    res.end();
+    
+  }.bind(this));
 };
 
 /*

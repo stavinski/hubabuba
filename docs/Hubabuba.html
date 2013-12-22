@@ -118,7 +118,7 @@
             
             
             
-            <td class="description last">options to be applied to this instanceoptions: bool debug - turns on debug mdoe to allow diagnosing issues (false)function verification - callback function with the subscription item                        allows customization about whether a (un)subscription                       is allowed by returning a bool (always return true)secret - a string to use as part of the HMAC, as per working draft this should only be used for hubs running on HTTPS (null)number leaseSeconds - number of seconds that the subscription should be active for, please note that the hub does                      not need to honor this value so always use the returned leaseSeconds from subscribed                      event as a guide to when expiry is to be expected (86400 1day)</td>
+            <td class="description last">options to be applied to this instanceoptions: bool debug - turns on debug mdoe to allow diagnosing issues (false)function verification - callback function with the subscription item                        allows customization about whether a (un)subscription                       is allowed by returning a bool (always return true)secret - a string to use as part of the HMAC, as per working draft this should only be used for hubs running on HTTPS (null)number leaseSeconds - number of seconds that the subscription should be active for, please note that the hub does                      not need to honor this value so always use the returned leaseSeconds from subscribed                      event as a guide to when expiry is to be expected (86400 1day)number maxNotificationSize - Maximum number of bytes that is allowed to be posted as a notification (4.194e6 = 4MB)</td>
         </tr>
 	
 	
@@ -149,7 +149,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line54">line 54</a>
+        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line56">line 56</a>
     </li></ul></dd>
     
     
@@ -187,7 +187,7 @@
     
         <h5>Example</h5>
         
-    <pre class="prettyprint"><code> options  {    url : "http://www.myhost.com/hubabuba",    debug : true,    secret: "AMt323Dkpf2j1qQ",    verification : function (item) {      var sub = subs.find(item.id);      if (item.mode === modes.SUBSCRIBE) {        return (sub) &amp;&amp; (sub.status === modes.PENDING);      }    },    leaseSeconds : 10000  }</code></pre>
+    <pre class="prettyprint"><code> options  {    url : "http://www.myhost.com/hubabuba",    debug : true,    secret: "AMt323Dkpf2j1qQ",    verification : function (item) {      var sub = subs.find(item.id);      if (item.mode === modes.SUBSCRIBE) {        return (sub) &amp;&amp; (sub.status === modes.PENDING);      }    },    leaseSeconds : 10000,    maxNotificationSize : 1.049e6 // 1MB  }</code></pre>
 
     
 </dd>
@@ -250,7 +250,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line91">line 91</a>
+        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line94">line 94</a>
     </li></ul></dd>
     
     
@@ -413,7 +413,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line150">line 150</a>
+        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line153">line 153</a>
     </li></ul></dd>
     
     
@@ -549,7 +549,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line163">line 163</a>
+        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line166">line 166</a>
     </li></ul></dd>
     
     
@@ -636,7 +636,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line187">line 187</a>
+        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line186">line 186</a>
     </li></ul></dd>
     
     
@@ -715,7 +715,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line168">line 168</a>
+        <a href="error.js.html">lib/error.js</a>, <a href="error.js.html#line18">line 18</a>
     </li></ul></dd>
     
     
@@ -794,7 +794,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line350">line 350</a>
+        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line399">line 399</a>
     </li></ul></dd>
     
     
@@ -873,7 +873,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line320">line 320</a>
+        <a href="index.js.html">d:/repository/hubabuba/index.js</a>, <a href="index.js.html#line321">line 321</a>
     </li></ul></dd>
     
     
@@ -916,7 +916,7 @@
 <br clear="both">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-alpha2</a> on Sat Dec 21 2013 22:01:53 GMT+0000 (GMT Standard Time)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-alpha2</a> on Sun Dec 22 2013 12:57:25 GMT+0000 (GMT Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>

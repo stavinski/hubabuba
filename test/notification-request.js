@@ -3,29 +3,43 @@
 
 var expect = require("chai").expect
   , sinon = require("sinon")
+  , mockery = require("mockery")
   , Hubabuba = require("../");
-
   
 describe("when handling a notification", function () {
-  var sut, url, req, res, nextSpy, handler;
+  var sut, url, req, res, nextSpy, handler, http;
   beforeEach(function () {
+    mockery.enable();
+    mockery.registerSubstitute("http", "./test/fakehttp");
+    mockery.registerAllowable('./fakehttp');
+    
+    http = require("./fakehttp");
+    http.init();
+        
     nextSpy = sinon.spy();
     url = "http://callback.com/hubabuba";
-    sut = new Hubabuba(url);
-    handler = sut.handler()
-                 .bind(sut);
+    sut = new Hubabuba(url, {
+      maxNotificationSize: 100
+    });
+    handler = sut.handler().bind(sut);
     res = {
       writeHead : sinon.spy(),
       end : sinon.spy()
     };
-    req = {
-      url : "/hubabuba",
-      method : "POST",
-      query: { id : "1" },
-      headers: {
+    req = http.request();
+    req.url = "/hubabuba";
+    req.method = "POST";
+    req.query = { id : "1" };
+    req.headers = {
+        "Content-Length": 10,
         link: "<http://pubsubhubbub.superfeedr.com>; rel=\"hub\",<http://blog.superfeedr.com/my-resource>; rel=\"self\""
-      }
     };
+  });
+  
+  afterEach(function () {
+    mockery.deregisterSubstitute("http", "./test/fakehttp");
+    mockery.deregisterSubstitute("https", "./test/fakehttp");  
+    mockery.disable();
   });
   
   it("should raise error if id not supplied", function () {
@@ -35,9 +49,35 @@ describe("when handling a notification", function () {
     handler(req, res, nextSpy);
     expect(errorSpy.called).to.be.true;
   });
+  
+  it("should raise error if content length header is larger than max size", function () {
+    var errorSpy = sinon.spy();
+    req.headers["Content-Length"] = 101;
+    sut.on("error", errorSpy);
+    handler(req, res, nextSpy);
+    expect(errorSpy.called).to.be.true;
+  });
+  
+  it("should respond with 413 if content length header is larger than max size", function () {
+    var errorSpy = sinon.spy();
+    req.headers["Content-Length"] = 101;
+    sut.on("error", errorSpy);
+    handler(req, res, nextSpy);
+    expect(res.writeHead.withArgs(413).called).to.be.true;
+  });
+  
+  it("should raise error if actual data is larger than max size", function () {
+    var errorSpy = sinon.spy();
+    sut.on("error", errorSpy);
+    handler(req, res, nextSpy);
+    req.emit("data", new Array(200).join("#"));
+    req.emit("end");
+    expect(errorSpy.called).to.be.true;
+  });
     
   it("should respond with a 200", function () {
     handler(req, res, nextSpy);
+    req.emit("end");
     expect(res.writeHead.withArgs(200).called).to.be.true;
   });
   
@@ -45,7 +85,7 @@ describe("when handling a notification", function () {
     var notificationSpy = sinon.spy();
     sut.on("notification", notificationSpy);
     handler(req, res, nextSpy);
-    
+    req.emit("end");
     expect(notificationSpy.called).to.be.true;
   });
   
@@ -63,33 +103,89 @@ describe("when handling a notification", function () {
 });
 
 describe("given secret is being used", function () {
-  var sut, url, req, res, nextSpy, handler;
+  var sut, url, req, res, nextSpy, handler, http;
+  
+  beforeEach(function () {
+    mockery.enable();
+    mockery.registerSubstitute("http", "./test/fakehttp");
+    mockery.registerAllowable('./fakehttp');
+    
+    http = require("./fakehttp");
+    http.init();
+        
+    nextSpy = sinon.spy();
+    url = "http://callback.com/hubabuba";
+    sut = new Hubabuba(url, {
+      secret: "bubblegum",
+      maxNotificationSize: 100
+    });
+    handler = sut.handler().bind(sut);
+    res = {
+      writeHead : sinon.spy(),
+      end : sinon.spy()
+    };
+    req = http.request();
+    req.url = "/hubabuba";
+    req.method = "POST";
+    req.query = { id : "1" };
+    req.headers = {
+        "Content-Length": 10,
+        link: "<http://pubsubhubbub.superfeedr.com>; rel=\"hub\",<http://blog.superfeedr.com/my-resource>; rel=\"self\""
+    };
+  });
+  
+  afterEach(function () {
+    mockery.deregisterSubstitute("http", "./test/fakehttp");
+    mockery.deregisterSubstitute("https", "./test/fakehttp");  
+    mockery.disable();
+  });
   
   describe("when handling a notification", function () {
-    beforeEach(function () {
-      nextSpy = sinon.spy();
-      url = "http://callback.com/hubabuba";
-      sut = new Hubabuba(url, { secret: "bubblegum" });
-      handler = sut.handler()
-                   .bind(sut);
-      res = {
-        writeHead : sinon.spy(),
-        end : sinon.spy()
-      };
-      req = {
-        url : "/hubabuba",
-        method : "POST",
-        query: { id : "1" },
-        headers: {
-          link: "<https://pubsubhubbub.superfeedr.com>; rel=\"hub\",<http://blog.superfeedr.com/my-resource>; rel=\"self\""
-        }
-      };
+      
+    it("should not raise notification event if secret header not supplied", function () {
+      var notificationSpy = sinon.spy();
+      sut.on("notification", notificationSpy);
+      handler(req, res, nextSpy);
+      req.emit("end");
+      expect(notificationSpy.called).to.be.false;
     });
-  
-    it("should not raise notification event if secret header not supplied");
-    it("should respond with a 200 if signature header not supplied");
-    it("should not raise notification event if signature does not match");
-    it("should raise notification event if signature is valid");     
+    
+    it("should respond with a 200 if signature header not supplied", function () {
+      handler(req, res, nextSpy);
+      req.emit("end");
+      expect(res.writeHead.withArgs(200).called).to.be.true;
+    });
+    
+    it("should raise error if signature does not match", function () {
+      var errorSpy = sinon.spy();
+      sut.on("error", errorSpy);
+      req.headers["X-Hub-Signature"] = "sha1=garbage";
+      handler(req, res, nextSpy);
+      req.emit("end");
+      expect(errorSpy.called).to.be.true;
+    });
+    
+    it("should not raise notification event if signature does not match", function () {
+      var errorSpy = sinon.spy();
+      sut.on("error", errorSpy);
+      var notificationSpy = sinon.spy();
+      sut.on("notification", notificationSpy);
+      req.headers["X-Hub-Signature"] = "sha1=garbage";
+      handler(req, res, nextSpy);
+      req.emit("end");
+      expect(notificationSpy.called).to.be.false;
+    });
+    
+    it("should raise notification event if signature is valid", function () {
+       var errorSpy = sinon.spy();
+      sut.on("error", errorSpy);
+      var notificationSpy = sinon.spy();
+      sut.on("notification", notificationSpy);
+      req.headers["X-Hub-Signature"] = "sha1=d64c7a122da89acd498822f67ca7b4b62b089302";
+      handler(req, res, nextSpy);
+      req.emit("end");
+      expect(notificationSpy.called).to.be.true;
+    });     
     
   });
 });
