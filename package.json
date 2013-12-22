@@ -1,7 +1,7 @@
 {
   "name": "hubabuba",
-  "version": "0.1.0",
-  "description": "A client library to make it easier to use the pubsubhubub protocol 0.4",
+  "version": "0.1.1",
+  "description": "A client library to make it easier to use the pubsubhubbub protocol 0.4",
   "main": "index.js",
   "repository": {
     "type": "git",
@@ -13,7 +13,7 @@
     "docs": "jsdoc -c docs/conf.json"
   },
   "keywords": [
-    "pubsubhubub",
+    "pubsubhubbub",
     "rss",
     "atom",
     "feed",
