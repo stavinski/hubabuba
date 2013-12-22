@@ -5,7 +5,8 @@ var connect = require("connect")
   , url = require("url")
   , Hubabuba = require("../")
   , push = new Hubabuba("http://" + process.env.EXTERNAL_IP + ":3000/hubabuba", {
-      debug : true
+      debug : true,
+      secret : "bubblegum"
     });
 
 push.on("error", console.error)

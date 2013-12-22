@@ -95,10 +95,13 @@ describe("when handling a notification", function () {
         id: req.query.id,
         topic: "http://blog.superfeedr.com/my-resource",
         hub: "http://pubsubhubbub.superfeedr.com",
-        request : req
+        headers: req.headers,
+        params: req.query,
+        content : "",
       });
     });
     handler(req, res, nextSpy);
+    req.emit("end");
   });
 });
 

@@ -406,6 +406,7 @@ var handleNotification = function (req, res) {
         topic: source.topic,
         hub: source.hub,
         headers: req.headers,
+        params: req.query,
         content : body
       });
     }
