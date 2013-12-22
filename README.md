@@ -14,7 +14,7 @@ The handling side uses connect so that you can plug it into an existing connect/
 - [Dependencies](#dependencies)
 - [Example Usage](#example-usage)
 - [Reference](#reference)
-- [FAQ's](#faq's)
+- [FAQ's](#faqs)
 - [Tests](#tests)
 - [Contributors](#contributors)
 - [License](#license)
