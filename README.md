@@ -1,7 +1,7 @@
 # Hubabuba 
 
-A client library to help making working with pubsubhub a little easier, this library is built to off the [0.4 working draft](https://superfeedr-misc.s3.amazonaws.com/pubsubhubbub-core-0.4.html)
-that is now supported by the 2 major pubsubhubub providers [google](https://pubsubhubbub.appspot.com) and [superfeedr](http://superfeedr.com/)
+A client library to help making working with pubsubhubbub a little easier, this library is built to off the [0.4 working draft](https://superfeedr-misc.s3.amazonaws.com/pubsubhubbub-core-0.4.html)
+that is now supported by the 2 major pubsubhubbub providers [google](https://pubsubhubbub.appspot.com) and [superfeedr](http://superfeedr.com/)
 
 In keeping with the 0.4 working draft this library does not assume what format the data is that is being subscribed to so there is 
 no parsing, this way you can use it for all different manner of uses.
@@ -221,7 +221,7 @@ this and the new subscribe will supercede the existing one.
 ###A.
 
 One of the goals of the 0.4 working draft is that it is not dependent on a particular format this gives it a lot more power as you could
-use the pubsubhubub protocol for subscribing to any resource that can be sent over HTTP, I wanted to make hubabuba embrace this power
+use the pubsubhubbub protocol for subscribing to any resource that can be sent over HTTP, I wanted to make hubabuba embrace this power
 and by not shackling it to a particular format it can be used for any resource.
 
 If you know that the content is going to be there are plenty of node modules that can parse the content into the required format.
