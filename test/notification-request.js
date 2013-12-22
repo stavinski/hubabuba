@@ -31,7 +31,7 @@ describe("when handling a notification", function () {
     req.method = "POST";
     req.query = { id : "1" };
     req.headers = {
-        "Content-Length": 10,
+        "content-length": 10,
         link: "<http://pubsubhubbub.superfeedr.com>; rel=\"hub\",<http://blog.superfeedr.com/my-resource>; rel=\"self\""
     };
   });
@@ -52,7 +52,7 @@ describe("when handling a notification", function () {
   
   it("should raise error if content length header is larger than max size", function () {
     var errorSpy = sinon.spy();
-    req.headers["Content-Length"] = 101;
+    req.headers["content-length"] = 101;
     sut.on("error", errorSpy);
     handler(req, res, nextSpy);
     expect(errorSpy.called).to.be.true;
@@ -60,7 +60,7 @@ describe("when handling a notification", function () {
   
   it("should respond with 413 if content length header is larger than max size", function () {
     var errorSpy = sinon.spy();
-    req.headers["Content-Length"] = 101;
+    req.headers["content-length"] = 101;
     sut.on("error", errorSpy);
     handler(req, res, nextSpy);
     expect(res.writeHead.withArgs(413).called).to.be.true;
@@ -129,7 +129,7 @@ describe("given secret is being used", function () {
     req.method = "POST";
     req.query = { id : "1" };
     req.headers = {
-        "Content-Length": 10,
+        "content-length": 10,
         link: "<http://pubsubhubbub.superfeedr.com>; rel=\"hub\",<http://blog.superfeedr.com/my-resource>; rel=\"self\""
     };
   });
@@ -159,7 +159,7 @@ describe("given secret is being used", function () {
     it("should raise error if signature does not match", function () {
       var errorSpy = sinon.spy();
       sut.on("error", errorSpy);
-      req.headers["X-Hub-Signature"] = "sha1=garbage";
+      req.headers["x-hub-signature"] = "sha1=garbage";
       handler(req, res, nextSpy);
       req.emit("end");
       expect(errorSpy.called).to.be.true;
@@ -170,7 +170,7 @@ describe("given secret is being used", function () {
       sut.on("error", errorSpy);
       var notificationSpy = sinon.spy();
       sut.on("notification", notificationSpy);
-      req.headers["X-Hub-Signature"] = "sha1=garbage";
+      req.headers["x-hub-signature"] = "sha1=garbage";
       handler(req, res, nextSpy);
       req.emit("end");
       expect(notificationSpy.called).to.be.false;
@@ -181,7 +181,7 @@ describe("given secret is being used", function () {
       sut.on("error", errorSpy);
       var notificationSpy = sinon.spy();
       sut.on("notification", notificationSpy);
-      req.headers["X-Hub-Signature"] = "sha1=d64c7a122da89acd498822f67ca7b4b62b089302";
+      req.headers["x-hub-signature"] = "sha1=d64c7a122da89acd498822f67ca7b4b62b089302";
       handler(req, res, nextSpy);
       req.emit("end");
       expect(notificationSpy.called).to.be.true;

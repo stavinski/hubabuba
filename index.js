@@ -347,7 +347,7 @@ var handleNotification = function (req, res) {
     return;
   }
   
-  size = req.headers["Content-Length"];
+  size = req.headers["content-length"];
   this.debugLog("size of request in header: " + size);
   if (size > this.opts.maxNotificationSize) {
     HubabubaError.raiseError.call(this, new HubabubaError("notification body size is greater than configured maximum", id));
@@ -374,7 +374,7 @@ var handleNotification = function (req, res) {
     emit = true;
     
     if (this.opts.secret) {
-      header = req.headers["X-Hub-Signature"];
+      header = req.headers["x-hub-signature"];
       this.debugLog("receieved secret header: " + header);
             
       if (header) {
@@ -405,7 +405,7 @@ var handleNotification = function (req, res) {
         id: id,
         topic: source.topic,
         hub: source.hub,
-        request: req,
+        headers: req.headers,
         content : body
       });
     }
