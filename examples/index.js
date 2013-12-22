@@ -6,7 +6,7 @@ var connect = require("connect")
   , Hubabuba = require("../")
   , push = new Hubabuba("http://" + process.env.EXTERNAL_IP + ":3000/hubabuba", {
       debug : true,
-      secret : "bubblegum"
+      secret: "bubblegum"
     });
 
 push.on("error", console.error)
@@ -63,6 +63,16 @@ var app = connect()
         }, handleCallback);
       }
       
+      res.end();
+      return;
+    } else if (pathname === "/accept/") {
+      res.writeHead(204);
+      res.end();
+      return;
+    } else if (pathname === "/refuse/") {
+      res.writeHead(401);
+      res.write("just bcoz");
+      res.end();
       return;
     }
     
