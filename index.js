@@ -439,27 +439,16 @@ var objectHasProperties = function (obj, props) {
 */
 var parseLinkHeaders = function (headers) {
   var linkHeader, source, links;
-  
-  var mapLinks = function (link) {
+      
+  var reduceLinks = function (map, current) {
     var regex, match;
     regex = new RegExp('<(.*)>;\\srel="(.*)"');
-    match = link.match(regex);
+    match = current.match(regex);
     if (match) {
-      return {
-        rel: match[2],
-        url: match[1]
-      };
+      // { "hub" : "http://www.hub.com/" }
+      map[match[2]] = match[1];
     }
-    
-    return null;
-  };
-    
-  var convertLinks = function (links) {
-    var map = {};
-    links.forEach(function (link) {
-      if (link)      
-        map[link.rel] = link.url;
-    });
+        
     return map;
   };
   
@@ -467,7 +456,7 @@ var parseLinkHeaders = function (headers) {
   source = {};
   
   if (linkHeader) {
-    links = convertLinks(linkHeader.split(",").map(mapLinks));
+    links = linkHeader.split(",").reduce(reduceLinks, {});
     source.hub = links.hub;
     source.topic = links.self;
   }
