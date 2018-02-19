@@ -360,7 +360,6 @@ var handleNotification = function (req, res) {
   
   req.on("data", function notificationData(data) {
     body += data;
-        
     if (Buffer.byteLength(body) > this.opts.maxNotificationSize) {
         this.debugLog("body size reached size of: " + Buffer.byteLength(body));
         HubabubaError.raiseError.call(this, new HubabubaError("notification body size is greater than configured maximum", id));
@@ -435,31 +434,16 @@ var objectHasProperties = function (obj, props) {
 * Link Example:
 *
 * <http://pubsubhubbub.superfeedr.com>; rel=\"hub\",<http://blog.superfeedr.com/my-resource>; rel=\"self\"
+* <https://www.youtube.com/xml/feeds/videos.xml?channel_id=***>; rel=self, <http://pubsubhubbub.appspot.com/>; rel=hub
 *
 */
 var parseLinkHeaders = function (headers) {
-  var linkHeader, source, links;
-      
-  var reduceLinks = function (map, current) {
-    var regex, match;
-    regex = new RegExp('<(.*)>;\\srel="(.*)"');
-    match = current.match(regex);
-    if (match) {
-      // { "hub" : "http://www.hub.com/" }
-      map[match[2]] = match[1];
-    }
-        
-    return map;
-  };
-  
-  linkHeader = headers.link;
-  source = {};
-  
-  if (linkHeader) {
-    links = linkHeader.split(",").reduce(reduceLinks, {});
-    source.hub = links.hub;
-    source.topic = links.self;
-  }
+  var source = {};
+
+  headers['link'].replace(/<([^>]*)>; rel=[\\"]*([\w]*)[^\\"]?(?!=(,|$))/g, function(full, topic, rel){
+    if (rel == 'hub') source.hub = topic;
+    else if (rel == 'self') source.topic = topic;
+  });
     
   return source;
 };
